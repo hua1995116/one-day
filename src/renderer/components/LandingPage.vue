@@ -7,9 +7,18 @@
           <div class="line"></div>
         </div>
         <ul class="ct-task-list">
-          <li  v-for="item in todos" :key="item.id" :class="[item.isChecked ? 'ct-task-li-checked' : 'ct-task-li' ]">
-            <span @click="handleCheck(item)" class="task-check"></span>
-            <span class="task-value">{{item.value}}</span>
+          <li v-for="item in todos" :key="item.id" :class="[item.isChecked ? 'ct-task-li-checked' : 'ct-task-li' ]" class="ct-task one-line" >
+            <div class="ct-task-outer" @mousemove.capture="handleMousemove" @mouseleave.capture="handleMouseleave">
+              <div class="ct-task-context">
+                <span @click="handleCheck(item)" class="task-check"></span>
+                <!-- <span class="task-value">{{item.value}}</span> -->
+                <a-textarea @change="handleChangeValue($event, item)" class="task-value" :value="item.value" placeholder="Autosize height with minimum and maximum number of lines" :autosize="{ minRows: 2, maxRows: 6 }" />
+              </div>
+              <span class="task-del">
+                <span class="icon-shanchu iconfont icon"></span>
+                <span class="task-del-text">Delete</span>
+              </span>
+            </div>
           </li>
         </ul>
       </div>
@@ -18,13 +27,18 @@
 </template>
 
 <script>
-  import SystemInformation from './LandingPage/SystemInformation';
+  import { Input } from 'ant-design-vue';
   import uuid from '../utils/index';
   import db from '../../data/index';
+  import getCliboard from '../opera/index';
+  const { ipcRenderer } = require('electron');
+  let cacheLast = '';
 
   export default {
     name: 'landing-page',
-    components: { SystemInformation },
+    components: {
+      [Input.TextArea.name]: Input.TextArea,
+    },
     data() {
       return {
         value: '',
@@ -33,9 +47,52 @@
       };
     },
     mounted() {
-      // console.log(db.has('data').value());
+      const that = this;
+      ipcRenderer.on('main-process-messages', () => {
+        console.log(getCliboard());
+        if (getCliboard() !== cacheLast && getCliboard() !== '') {
+          cacheLast = getCliboard();
+          this.$confirm({
+            title: '要将以下添加到日程吗?',
+            content: cacheLast,
+            onOk() {
+              that.handleTodo(cacheLast);
+            },
+            onCancel() {},
+          });
+        }
+      });
     },
     methods: {
+      handleChangeValue(e, item) {
+        console.log(e.target.value);
+        console.log(e, item);
+        this.todos[item.id].value = e.target.value;
+      },
+      handleMousemove(e) {
+        const { target } = e;
+        // console.log(1, target.className.includes('ct-task'), target);
+        if (target.className.includes('task-value')) {
+          const outer = target.parentNode.parentNode;
+          const taskLi = outer.parentNode;
+          const bounding = taskLi.getBoundingClientRect();
+          const { right } = bounding;
+          if (right - e.clientX < 50) {
+            // console.log(target.className);
+            if (!outer.className.includes('move')) {
+              outer.classList.add('move');
+            }
+          }
+        }
+        e.stopPropagation();
+      },
+      handleMouseleave(e) {
+        const { target } = e;
+        if (target.className.includes('move')) {
+          target.classList.remove('move');
+        }
+        e.stopPropagation();
+      },
       handleCheck(item) {
         const oldValue = this.todos[item.id].isChecked;
         this.todos[item.id].isChecked = !oldValue;
@@ -54,10 +111,10 @@
           }
         }, 50);
       },
-      handleTodo() {
+      handleTodo(value) {
         const todo = {
           id: uuid(),
-          value: this.value,
+          value: value || this.value,
           isChecked: false,
         };
         this.todos = {
@@ -71,7 +128,7 @@
   };
 </script>
 
-<style>
+<style lang="scss">
   @import url('https://fonts.googleapis.com/css?family=Source+Sans+Pro');
 
   * {
@@ -92,6 +149,21 @@
       -webkit-box-sizing: border-box;
       box-sizing: border-box;
   }
+  .clear:after {
+    content: '';
+    clear: both;
+    height: 0;
+    display: block;
+  }
+
+  .one-line:after {
+    content: '';
+    height: 1px;
+    // transform: scale(0.5);
+    width: 100%;
+    background: #ddd;
+    display: block;
+  }
 
   .pm-body-wrapper {
       min-width: 300px;
@@ -101,29 +173,93 @@
 
   .pm-body-wrapper ul {
       margin: 8px 0;
-      padding-left: 24px;
   }
 
-  .ct-task-list .ct-task-li {
-      position: relative;
-      list-style-type: none!important;
-      min-height: 24px;
-      font-size: 14px;
+  .ct-task-list {
+    .ct-task-li-checked {
+      .task-value {
+        color: #838383;
+      }
+    }
   }
 
-  .ct-task-list .ct-task-li-checked {
-      color: #838383;
-      position: relative;
-      list-style-type: none!important;
-      min-height: 24px;
-      font-size: 14px;
+  .ct-task {
+    overflow: hidden;
+    position: relative;
+    min-height: 40px;
+    box-sizing: border-box;
+    position: relative;
+    list-style-type: none!important;
+    font-size: 14px;
+    .ct-task-outer {
+      width: 110%;
+      display: flex;
+      padding: 5px 0;
+      transition: transform 0.125s;
+      &.move {
+        transform: translate3d(-10%, 0, 0);
+      }
+      .ct-task-context {
+        flex: 1;
+        min-height: 40px;
+        display: flex;
+        margin-right: 10px;
+        .task-check {
+          flex-basis: 25px;
+        }
+        .task-value {
+          border: none;
+          flex: 1;
+        }
+      }
+      .task-del {
+        min-height: 40px;
+        display: flex;
+        flex-basis: 35px;
+        background: #ff3a31;
+        color: #fff;
+        font-size: 13px;
+        text-align: center;
+        transition: all 0.5s;
+        justify-content: center;
+        align-items: center;
+        flex-direction: column;
+        .icon {
+          display: block;
+          height: 15px;
+          font-size: 13px;
+          color: #fff;
+        }
+        &:hover {
+          flex-basis: 55px;
+          .task-del-text {
+            display: block;
+            animation-name: moveup;
+            animation-duration: 0.375s;
+          }
+        }
+        .task-del-text {
+          transition: all 0.25s;
+          font-size: 12px;
+          display: none;
+          opacity: 1;
+        }
+      }
+    }
+  }
+
+  @keyframes moveup{
+    0%{
+      opacity: 0;
+      transform: translate(0, 5px);
+    }
+    100% {
+      opacity: 1;
+      transform: translate(0, 0);
+    }
   }
 
   .ct-task-list .ct-task-li .task-check{
-      content: "";
-      position: absolute;
-      top: 3px;
-      left: -21px;
       height: 17px;
       width: 17px;
       border-radius: 1px;
@@ -131,10 +267,6 @@
   }
 
   .ct-task-list .ct-task-li-checked .task-check {
-      content: "";
-      position: absolute;
-      top: 3px;
-      left: -21px;
       height: 17px;
       width: 17px;
       border-radius: 1px;
@@ -180,7 +312,7 @@
     transition: transform 0.3s ease, -webkit-transform 0.3s ease;
     background: #1abc9c;
   }
-  
 
-  
+
+
 </style>

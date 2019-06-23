@@ -1,5 +1,4 @@
-import { app, BrowserWindow } from 'electron' // eslint-disable-line
-
+import { app, BrowserWindow, ipcMain } from 'electron' // eslint-disable-line
 /**
  * Set `__static` path to static files in production
  * https://simulatedgreg.gitbooks.io/electron-vue/content/en/using-static-assets.html
@@ -24,7 +23,9 @@ function createWindow() {
   });
 
   mainWindow.loadURL(winURL);
-
+  mainWindow.webContents.on('did-finish-load', () => {
+    // mainWindow.webContents.send('main-process-messages', 'nihao');
+  });
   mainWindow.on('closed', () => {
     mainWindow = null;
   });
@@ -38,10 +39,15 @@ app.on('window-all-closed', () => {
   }
 });
 
-app.on('activate', () => {
+app.on('activate', (e) => {
   if (mainWindow === null) {
     createWindow();
   }
+});
+
+
+app.on('browser-window-focus', (e) => {
+  mainWindow.webContents.send('main-process-messages', 'nihao');
 });
 
 /**
