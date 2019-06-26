@@ -17,11 +17,16 @@
     height: 200px;
     background: red;
 }
+.div {
+    user-select:text;
+    -webkit-user-select:text;
+}
 </style>
 </head>
 <body>
     <div class="outer">
         <div class="inner">12344444</div>
+        <div class="div" contenteditable="true"></div>
     </div>
 </body>
 <script>

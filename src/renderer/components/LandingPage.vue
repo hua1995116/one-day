@@ -8,62 +8,171 @@
         </div>
         <ul class="ct-task-list">
           <li v-for="item in todos" :key="item.id" :class="[item.isChecked ? 'ct-task-li-checked' : 'ct-task-li' ]" class="ct-task one-line" >
-            <div class="ct-task-outer" @mousemove.capture="handleMousemove" @mouseleave.capture="handleMouseleave">
+            <div class="ct-task-outer"
+              @mousemove.capture="handleMousemove" @mouseleave.capture="handleMouseleave">
               <div class="ct-task-context">
                 <span @click="handleCheck(item)" class="task-check"></span>
                 <!-- <span class="task-value">{{item.value}}</span> -->
-                <a-textarea @change="handleChangeValue($event, item)" class="task-value" :value="item.value" placeholder="Autosize height with minimum and maximum number of lines" :autosize="{ minRows: 2, maxRows: 6 }" />
+                <div class="task-value" @click="handleSetting">
+                  <a-textarea class="task-textarea" v-on:click.stop="doThis" @change="handleChangeValue($event, item)"  :value="item.value" placeholder="Autosize height with minimum and maximum number of lines" :autosize="{ minRows: 1, maxRows: 6 }" />
+                  <span class="task-setting">
+                    <a-icon type="edit" />
+                  </span>
+                </div>
               </div>
-              <span class="task-del">
+              <span class="task-del" @click="handleDel(item)">
                 <span class="icon-shanchu iconfont icon"></span>
                 <span class="task-del-text">Delete</span>
               </span>
             </div>
           </li>
         </ul>
+        <a-drawer
+          title="Basic Drawer"
+          placement="right"
+          :closable="false"
+          @close="onClose"
+          :visible="visible"
+        >
+          <p>Some contents...</p>
+          <p>Some contents...</p>
+          <p>Some contents...</p>
+        </a-drawer>
       </div>
     </main>
   </div>
 </template>
 
 <script>
-  import { Input } from 'ant-design-vue';
+  import { Input, Icon, Dropdown, Menu, Drawer } from 'ant-design-vue';
   import uuid from '../utils/index';
   import db from '../../data/index';
   import getCliboard from '../opera/index';
-  const { ipcRenderer } = require('electron');
+  import url from '../api/api';
+  const notifier = require('electron-notifications');
+  const { ipcRenderer, remote } = require('electron');
+  const { Menu: EMenu, MenuItem, BrowserWindow } = remote;
+
+  let win;
+  const menu = new EMenu();
+  menu.append(new MenuItem({
+    label: 'MenuItem1',
+    click() {
+      console.log('item 1 clicked');
+      win = new BrowserWindow({
+        width: 300,
+        height: 200,
+        frame: false, // 是否带工具栏
+      });
+      win.on('close', () => {
+        win = null;
+      });
+    },
+    submenu: [
+      {
+        role: 'startspeaking',
+        type: 'normal',
+      },
+      { role: 'stopspeaking' },
+    ],
+  }));
+  menu.append(new MenuItem({ type: 'separator' }));
+  menu.append(new MenuItem({ label: 'MenuItem2', type: 'checkbox', checked: true }));
   let cacheLast = '';
 
   export default {
     name: 'landing-page',
     components: {
       [Input.TextArea.name]: Input.TextArea,
+      [Icon.name]: Icon,
+      [Dropdown.name]: Dropdown,
+      [Menu.name]: Menu,
+      [Menu.Item.name]: Menu.Item,
+      [Menu.SubMenu.name]: Menu.SubMenu,
+      [Drawer.name]: Drawer,
     },
     data() {
       return {
+        visible: false,
         value: '',
         todos: db.get('data').value(),
         isOpera: false,
+        isCliboard: false,
+        isNotify: false,
       };
     },
     mounted() {
       const that = this;
       ipcRenderer.on('main-process-messages', () => {
         console.log(getCliboard());
-        if (getCliboard() !== cacheLast && getCliboard() !== '') {
+        if (getCliboard() !== cacheLast && getCliboard() !== '' && this.isCliboard) {
           cacheLast = getCliboard();
           this.$confirm({
             title: '要将以下添加到日程吗?',
             content: cacheLast,
-            onOk() {
-              that.handleTodo(cacheLast);
+            async onOk() {
+              if (/^https?:\/\/(([a-zA-Z0-9_-])+(\.)?)*(:\d+)?(\/((\.)?(\?)?=?&?[a-zA-Z0-9_-](\?)?)*)*$/i.test(cacheLast)) {
+                const result = await url.getTitle({
+                  url: cacheLast,
+                });
+                if (result.code === 0) {
+                  const { title } = result;
+                  that.handleTodo(null, `${title}\r\n${cacheLast}`);
+                }
+              } else {
+                that.handleTodo(null, cacheLast);
+              }
             },
             onCancel() {},
           });
         }
       });
+      if (this.isNotify) {
+        const notification = notifier.notify('Calendar', {
+          message: 'Event begins in 10 minutes',
+          icon: 'https://i.loli.net/2019/06/23/5d0f83c70938994932.png',
+          buttons: ['Dismiss', 'Snooze'],
+        });
+        notification.on('buttonClicked', (text, buttonIndex, options) => {
+          if (text === 'Snooze') {
+            // Snooze!
+            console.log('继续');
+          } else if (buttonIndex === 1) {
+            console.log(options.url);
+          }
+          notification.close();
+        });
+      }
     },
     methods: {
+      doThis() {
+        console.log(1);
+      },
+      showDrawer() {
+        this.visible = true;
+      },
+      onClose() {
+        this.visible = false;
+      },
+      handleSetting() {
+        this.showDrawer();
+      },
+      handleDel(item) {
+        this.$confirm({
+          title: '提示',
+          content: '确认删除吗？',
+          iconType: 'exclamation-circle',
+          onOk: () => {
+            const curData = this.todos;
+            delete curData[item.id];
+            this.todos = {
+              ...curData,
+            };
+            this.syncdata();
+          },
+          onCancel() {},
+        });
+      },
       handleChangeValue(e, item) {
         console.log(e.target.value);
         console.log(e, item);
@@ -71,9 +180,8 @@
       },
       handleMousemove(e) {
         const { target } = e;
-        // console.log(1, target.className.includes('ct-task'), target);
-        if (target.className.includes('task-value')) {
-          const outer = target.parentNode.parentNode;
+        if (target.className.includes('task-textarea')) {
+          const outer = target.parentNode.parentNode.parentNode;
           const taskLi = outer.parentNode;
           const bounding = taskLi.getBoundingClientRect();
           const { right } = bounding;
@@ -111,7 +219,7 @@
           }
         }, 50);
       },
-      handleTodo(value) {
+      handleTodo(e, value) {
         const todo = {
           id: uuid(),
           value: value || this.value,
@@ -208,8 +316,12 @@
           flex-basis: 25px;
         }
         .task-value {
-          border: none;
           flex: 1;
+          textarea {
+            display: block;
+            border: none;
+            padding: 0px 0 3px 11px;
+          }
         }
       }
       .task-del {
@@ -224,6 +336,7 @@
         justify-content: center;
         align-items: center;
         flex-direction: column;
+        cursor: pointer;
         .icon {
           display: block;
           height: 15px;
