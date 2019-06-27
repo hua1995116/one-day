@@ -13,10 +13,11 @@
               <div class="ct-task-context">
                 <span @click="handleCheck(item)" class="task-check"></span>
                 <!-- <span class="task-value">{{item.value}}</span> -->
-                <div class="task-value" @click="handleSetting">
+                <div class="task-value" @click="handleSetting(item)">
                   <a-textarea class="task-textarea" v-on:click.stop="doThis" @change="handleChangeValue($event, item)"  :value="item.value" placeholder="Autosize height with minimum and maximum number of lines" :autosize="{ minRows: 1, maxRows: 6 }" />
                   <span class="task-setting">
-                    <a-icon type="edit" />
+                    <!-- <a-icon type="edit" /> -->
+                    <span>任务</span>
                   </span>
                 </div>
               </div>
@@ -28,15 +29,48 @@
           </li>
         </ul>
         <a-drawer
-          title="Basic Drawer"
+          title="设置"
           placement="right"
           :closable="false"
           @close="onClose"
           :visible="visible"
         >
-          <p>Some contents...</p>
-          <p>Some contents...</p>
-          <p>Some contents...</p>
+          <Description>
+            <a-icon type="bell" slot="term"/>
+            <div slot="detail">
+              <a-date-picker
+                :defaultValue="getTagetBell"
+                class="task-bell"
+                showTime
+                format="YYYY-MM-DD HH:mm:ss"
+                placeholder="通知我"
+                @change="onChangeBell"
+                @ok="onOk"
+                suffixIcon=" "
+              />
+            </div>
+          </Description>
+          <Description>
+            <a-icon type="schedule" slot="term"/>
+          </Description>
+          <Description>
+            <a-icon type="tags" slot="term"/>
+            <div slot="detail">
+              <a-select
+                :defaultValue="targetTodo.label"
+                showSearch
+                placeholder="选择标签"
+                optionFilterProp="children"
+                style="width: 200px"
+                @change="handleLabel"
+              >
+                <a-select-option v-for="item in configLabel" :key="item.value" :value="item.value">
+                  <span class="task-label-block" :style="{ background: item.color }"></span>
+                  <span>{{item.value}}</span>
+                </a-select-option>
+              </a-select>
+            </div>
+          </Description>
         </a-drawer>
       </div>
     </main>
@@ -44,7 +78,9 @@
 </template>
 
 <script>
-  import { Input, Icon, Dropdown, Menu, Drawer } from 'ant-design-vue';
+  import { Input, Icon, Dropdown, Menu, Drawer, DatePicker, Select } from 'ant-design-vue';
+  import moment from 'moment';
+  import Description from './Description/index';
   import uuid from '../utils/index';
   import db from '../../data/index';
   import getCliboard from '../opera/index';
@@ -90,6 +126,10 @@
       [Menu.Item.name]: Menu.Item,
       [Menu.SubMenu.name]: Menu.SubMenu,
       [Drawer.name]: Drawer,
+      [Description.name]: Description,
+      [DatePicker.name]: DatePicker,
+      [Select.name]: Select,
+      [Select.Option.name]: Select.Option,
     },
     data() {
       return {
@@ -99,9 +139,18 @@
         isOpera: false,
         isCliboard: false,
         isNotify: false,
+        targetTodo: {},
+        configLabel: [{
+          value: '任务',
+          color: 'red',
+        }, {
+          value: '链接',
+          color: '#044BD9',
+        }],
       };
     },
     mounted() {
+      console.log(this.todos);
       const that = this;
       ipcRenderer.on('main-process-messages', () => {
         console.log(getCliboard());
@@ -144,18 +193,33 @@
         });
       }
     },
+    computed: {
+      getTagetBell() {
+        return targetTodo.bell ? moment(targetTodo.bell) : moment(new Date());
+      }
+    },
     methods: {
+      handleLabel(e) {
+        console.log(e.target.value);
+      },
+      onChangeBell(date, dateString) {
+        const { id } = this.targetTodo;
+        this.todos[id].bell = dateString;
+        this.syncdata();
+      },
+      onOk() {
+
+      },
       doThis() {
         console.log(1);
-      },
-      showDrawer() {
-        this.visible = true;
       },
       onClose() {
         this.visible = false;
       },
-      handleSetting() {
-        this.showDrawer();
+      handleSetting(item) {
+        this.visible = true;
+        this.targetTodo = item;
+        console.log(item);
       },
       handleDel(item) {
         this.$confirm({
@@ -224,6 +288,8 @@
           id: uuid(),
           value: value || this.value,
           isChecked: false,
+          bell: null,
+          label: null,
         };
         this.todos = {
           ...(this.todos),
@@ -236,196 +302,4 @@
   };
 </script>
 
-<style lang="scss">
-  @import url('https://fonts.googleapis.com/css?family=Source+Sans+Pro');
-
-  * {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-  }
-  body {
-    line-height: 1.5;
-  }
-  * {
-      box-sizing: border-box;
-      font-family: __SYMBOL,-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica Neue,Helvetica,PingFang SC,Hiragino Sans GB,Microsoft YaHei,SimSun,sans-serif;
-      font-variant-ligatures: none;
-      font-variant-numeric: tabular-nums;
-  }
-  *, :after, :before {
-      -webkit-box-sizing: border-box;
-      box-sizing: border-box;
-  }
-  .clear:after {
-    content: '';
-    clear: both;
-    height: 0;
-    display: block;
-  }
-
-  .one-line:after {
-    content: '';
-    height: 1px;
-    // transform: scale(0.5);
-    width: 100%;
-    background: #ddd;
-    display: block;
-  }
-
-  .pm-body-wrapper {
-      min-width: 300px;
-      width: 80%;
-      margin: 0 auto;
-  }
-
-  .pm-body-wrapper ul {
-      margin: 8px 0;
-  }
-
-  .ct-task-list {
-    .ct-task-li-checked {
-      .task-value {
-        color: #838383;
-      }
-    }
-  }
-
-  .ct-task {
-    overflow: hidden;
-    position: relative;
-    min-height: 40px;
-    box-sizing: border-box;
-    position: relative;
-    list-style-type: none!important;
-    font-size: 14px;
-    .ct-task-outer {
-      width: 110%;
-      display: flex;
-      padding: 5px 0;
-      transition: transform 0.125s;
-      &.move {
-        transform: translate3d(-10%, 0, 0);
-      }
-      .ct-task-context {
-        flex: 1;
-        min-height: 40px;
-        display: flex;
-        margin-right: 10px;
-        .task-check {
-          flex-basis: 25px;
-        }
-        .task-value {
-          flex: 1;
-          textarea {
-            display: block;
-            border: none;
-            padding: 0px 0 3px 11px;
-          }
-        }
-      }
-      .task-del {
-        min-height: 40px;
-        display: flex;
-        flex-basis: 35px;
-        background: #ff3a31;
-        color: #fff;
-        font-size: 13px;
-        text-align: center;
-        transition: all 0.5s;
-        justify-content: center;
-        align-items: center;
-        flex-direction: column;
-        cursor: pointer;
-        .icon {
-          display: block;
-          height: 15px;
-          font-size: 13px;
-          color: #fff;
-        }
-        &:hover {
-          flex-basis: 55px;
-          .task-del-text {
-            display: block;
-            animation-name: moveup;
-            animation-duration: 0.375s;
-          }
-        }
-        .task-del-text {
-          transition: all 0.25s;
-          font-size: 12px;
-          display: none;
-          opacity: 1;
-        }
-      }
-    }
-  }
-
-  @keyframes moveup{
-    0%{
-      opacity: 0;
-      transform: translate(0, 5px);
-    }
-    100% {
-      opacity: 1;
-      transform: translate(0, 0);
-    }
-  }
-
-  .ct-task-list .ct-task-li .task-check{
-      height: 17px;
-      width: 17px;
-      border-radius: 1px;
-      background: url("data:image/svg+xml;charset=utf-8,%3Csvg width='16' height='16' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0h16v16H0V0zm1 1v14h14V1H1z' fill='%236E6B6B' fill-rule='evenodd'/%3E%3C/svg%3E") no-repeat 50%;
-  }
-
-  .ct-task-list .ct-task-li-checked .task-check {
-      height: 17px;
-      width: 17px;
-      border-radius: 1px;
-      background: url("data:image/svg+xml;charset=utf-8,%3Csvg width='16' height='16' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M12 0v1H1v14h14V7h1v9H0V0h12zM6.908 9.728l7.385-7.385a1 1 0 0 1 1.414 1.414l-8.071 8.071c-.2.201-.465.299-.728.293a.997.997 0 0 1-.728-.293L2.938 8.586a1 1 0 0 1 1.414-1.414l2.556 2.556z' fill='%23AAA' fill-rule='evenodd'/%3E%3C/svg%3E") no-repeat 50%;
-  }
-
-  input {
-    background: 0;
-    border: 0;
-    outline: none;
-    width: 100%;
-    font-size: 1.5em;
-    transition: padding 0.3s 0.2s ease;
-    text-align: center;
-  }
-  input:focus {
-    padding-bottom: 5px;
-  }
-  input:focus + .line:after {
-    -webkit-transform: scaleX(1);
-            transform: scaleX(1);
-  }
-  .field {
-    position: relative;
-  }
-  .field .line {
-    width: 100%;
-    height: 3px;
-    position: absolute;
-    bottom: -8px;
-    background: #bdc3c7;
-  }
-  .field .line:after {
-    content: " ";
-    position: absolute;
-    float: right;
-    width: 100%;
-    height: 3px;
-    -webkit-transform: scalex(0);
-            transform: scalex(0);
-    transition: -webkit-transform 0.3s ease;
-    transition: transform 0.3s ease;
-    transition: transform 0.3s ease, -webkit-transform 0.3s ease;
-    background: #1abc9c;
-  }
-
-
-
-</style>
+<style lang="scss" src="./home.scss"></style>
