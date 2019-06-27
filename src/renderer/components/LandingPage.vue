@@ -17,7 +17,8 @@
                   <a-textarea class="task-textarea" v-on:click.stop="doThis" @change="handleChangeValue($event, item)"  :value="item.value" placeholder="Autosize height with minimum and maximum number of lines" :autosize="{ minRows: 1, maxRows: 6 }" />
                   <span class="task-setting">
                     <!-- <a-icon type="edit" /> -->
-                    <span>任务</span>
+                    <span class="task-label-block" :style="{ background: item.label && item.label.color }"></span>
+                    <span>{{item.label && item.label.value}}</span>
                   </span>
                 </div>
               </div>
@@ -195,8 +196,8 @@
     },
     computed: {
       getTagetBell() {
-        return targetTodo.bell ? moment(targetTodo.bell) : moment(new Date());
-      }
+        return this.targetTodo.bell ? moment(this.targetTodo.bell) : moment(new Date());
+      },
     },
     methods: {
       handleLabel(e) {
@@ -289,7 +290,7 @@
           value: value || this.value,
           isChecked: false,
           bell: null,
-          label: null,
+          label: this.configLabel[0],
         };
         this.todos = {
           ...(this.todos),
