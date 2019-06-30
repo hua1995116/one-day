@@ -1,6 +1,5 @@
 <template>
   <div id="wrapper">
-    <one-header title="123"></one-header>
     <main>
       <div class="pm-body-wrapper">
         <div class="field">
@@ -84,7 +83,6 @@
   import moment from 'moment';
   import _ from 'lodash';
   import Description from '@/components/Description/index';
-  import Header from '@/components/Header/index';
   import uuid from '@/utils/index';
   import getCliboard from '@/opera/index';
   import url from '@/api/api';
@@ -134,7 +132,6 @@
       [DatePicker.name]: DatePicker,
       [Select.name]: Select,
       [Select.Option.name]: Select.Option,
-      [Header.name]: Header,
     },
     data() {
       return {

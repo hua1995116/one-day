@@ -11,6 +11,11 @@ export default new Router({
       component: require('@/view/Index/index.vue').default,
     },
     {
+      path: '/labelconfig',
+      name: 'labelconfig',
+      component: require('@/view/LabelConfig/index.vue').default,
+    },
+    {
       path: '*',
       redirect: '/',
     },

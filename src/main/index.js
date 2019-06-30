@@ -20,6 +20,14 @@ function createWindow() {
     height: 563,
     useContentSize: true,
     width: 1000,
+    frame: false,
+    // center: true,
+    // fullscreenable: false,
+    // resizable: false,
+    title: 'one-day',
+    vibrancy: 'ultra-dark',
+    transparent: true,
+    titleBarStyle: 'hidden',
   });
 
   mainWindow.loadURL(winURL);
@@ -39,14 +47,14 @@ app.on('window-all-closed', () => {
   }
 });
 
-app.on('activate', (e) => {
+app.on('activate', () => {
   if (mainWindow === null) {
     createWindow();
   }
 });
 
 
-app.on('browser-window-focus', (e) => {
+app.on('browser-window-focus', () => {
   mainWindow.webContents.send('main-process-messages', 'nihao');
 });
 

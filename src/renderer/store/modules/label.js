@@ -1,13 +1,20 @@
 const state = {
-  main: 0,
+  configLabel: [{
+    id: 1,
+    value: '任务',
+    color: 'red',
+  }, {
+    id: 2,
+    value: '链接',
+    color: '#044BD9',
+  }],
 };
 
 const mutations = {
-  DECREMENT_MAIN_COUNTER(state) {
-    state.main -= 1;
+  setConfigLabel(state, data) {
+    state.configLabel = data;
   },
-  INCREMENT_MAIN_COUNTER(state) {
-    state.main += 1;
+  delConfigLabel() {
   },
 };
 
