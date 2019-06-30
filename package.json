@@ -60,6 +60,7 @@
     "electron": "^2.0.4",
     "electron-notifications": "^1.0.0",
     "fs-extra": "^8.0.1",
+    "lodash": "^4.17.11",
     "lodash-id": "^0.14.0",
     "lowdb": "^1.0.0",
     "moment": "^2.24.0",

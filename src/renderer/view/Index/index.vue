@@ -1,5 +1,6 @@
 <template>
   <div id="wrapper">
+    <one-header title="123"></one-header>
     <main>
       <div class="pm-body-wrapper">
         <div class="field">
@@ -58,14 +59,14 @@
             <a-icon type="tags" slot="term"/>
             <div slot="detail">
               <a-select
-                :defaultValue="targetTodo.label"
+                :defaultValue="targetTodo.label && targetTodo.label.value"
                 showSearch
                 placeholder="选择标签"
                 optionFilterProp="children"
                 style="width: 200px"
                 @change="handleLabel"
               >
-                <a-select-option v-for="item in configLabel" :key="item.value" :value="item.value">
+                <a-select-option v-for="item in configLabel" :key="item.id" :value="item.id">
                   <span class="task-label-block" :style="{ background: item.color }"></span>
                   <span>{{item.value}}</span>
                 </a-select-option>
@@ -81,11 +82,13 @@
 <script>
   import { Input, Icon, Dropdown, Menu, Drawer, DatePicker, Select } from 'ant-design-vue';
   import moment from 'moment';
-  import Description from './Description/index';
-  import uuid from '../utils/index';
-  import db from '../../data/index';
-  import getCliboard from '../opera/index';
-  import url from '../api/api';
+  import _ from 'lodash';
+  import Description from '@/components/Description/index';
+  import Header from '@/components/Header/index';
+  import uuid from '@/utils/index';
+  import getCliboard from '@/opera/index';
+  import url from '@/api/api';
+  import db from '../../../data/index';
   const notifier = require('electron-notifications');
   const { ipcRenderer, remote } = require('electron');
   const { Menu: EMenu, MenuItem, BrowserWindow } = remote;
@@ -131,6 +134,7 @@
       [DatePicker.name]: DatePicker,
       [Select.name]: Select,
       [Select.Option.name]: Select.Option,
+      [Header.name]: Header,
     },
     data() {
       return {
@@ -140,11 +144,14 @@
         isOpera: false,
         isCliboard: false,
         isNotify: false,
-        targetTodo: {},
+        targetTodo: {
+        },
         configLabel: [{
+          id: 1,
           value: '任务',
           color: 'red',
         }, {
+          id: 2,
           value: '链接',
           color: '#044BD9',
         }],
@@ -201,7 +208,10 @@
     },
     methods: {
       handleLabel(e) {
-        console.log(e.target.value);
+        const { id } = this.targetTodo;
+        const label = _.find(this.configLabel, { id: e });
+        this.todos[id].label = label;
+        this.syncdata();
       },
       onChangeBell(date, dateString) {
         const { id } = this.targetTodo;
@@ -303,4 +313,4 @@
   };
 </script>
 
-<style lang="scss" src="./home.scss"></style>
+<style lang="scss" src="./Index.scss"></style>
